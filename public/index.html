@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Status Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .status-summary {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .summary-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .system-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .system-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .system-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+        
+        .system-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .system-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            color: #333;
+            font-family: monospace;
+        }
+        
+        .no-systems {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .no-systems-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .refresh-info {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .header h1 { font-size: 2rem; }
+            .systems-grid { grid-template-columns: 1fr; }
+            .status-summary { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖥️ Server Status Monitor</h1>
+            <p>Real-time system availability dashboard</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            Loading system status...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <div class="status-summary">
+                <div class="summary-item">
+                    <div id="online-count" class="summary-number">0</div>
+                    <div class="summary-label">Systems Online</div>
+                </div>
+                <div class="summary-item">
+                    <div id="last-update" class="info-value">Never</div>
+                    <div class="summary-label">Last Updated</div>
+                </div>
+                <div class="summary-item">
+                    <div id="auto-refresh" class="info-value">30s</div>
+                    <div class="summary-label">Auto Refresh</div>
+                </div>
+            </div>
+            
+            <div id="systems-container">
+                <div id="systems-grid" class="systems-grid"></div>
+                <div id="no-systems" class="no-systems" style="display: none;">
+                    <div class="no-systems-icon">💤</div>
+                    <h3>No Systems Online</h3>
+                    <p>No systems are currently reporting their status. Systems will appear here once they start pinging the monitor.</p>
+                </div>
+            </div>
+            
+            <div class="refresh-info">
+                Page automatically refreshes every 30 seconds
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval;
+        let lastUpdateTime = null;
+        
+        function formatUptime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days}d ${hours % 24}h`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+        
+        function formatLastPing(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            const seconds = Math.floor(diff / 1000);
+            
+            if (seconds < 60) return `${seconds}s ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            return `${hours}h ago`;
+        }
+        
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString();
+        }
+        
+        function createSystemCard(system) {
+            return `
+                <div class="system-card">
+                    <div class="system-header">
+                        <div class="status-indicator"></div>
+                        <div class="system-name">${system.name}</div>
+                    </div>
+                    <div class="system-info">
+                        <div class="info-row">
+                            <span class="info-label">Type:</span>
+                            <span class="info-value">${system.type}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Uptime:</span>
+                            <span class="info-value">${formatUptime(system.uptime)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Last Ping:</span>
+                            <span class="info-value">${formatLastPing(system.lastPing)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">System ID:</span>
+                            <span class="info-value">${system.id}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                updateUI(data);
+                hideError();
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+                showError(`Failed to fetch server status: ${error.message}`);
+            }
+        }
+        
+        function updateUI(data) {
+            const { systems, lastUpdate, totalOnline } = data;
+            
+            // Update summary
+            document.getElementById('online-count').textContent = totalOnline;
+            document.getElementById('last-update').textContent = formatTime(lastUpdate);
+            lastUpdateTime = lastUpdate;
+            
+            // Update systems grid
+            const systemsGrid = document.getElementById('systems-grid');
+            const noSystems = document.getElementById('no-systems');
+            
+            if (systems.length === 0) {
+                systemsGrid.style.display = 'none';
+                noSystems.style.display = 'block';
+            } else {
+                systemsGrid.style.display = 'grid';
+                noSystems.style.display = 'none';
+                systemsGrid.innerHTML = systems.map(createSystemCard).join('');
+            }
+            
+            // Show content, hide loading
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function startAutoRefresh() {
+            refreshInterval = setInterval(fetchStatus, 30000); // 30 seconds
+        }
+        
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+                fetchStatus(); // Immediate refresh when page becomes visible
+            }
+        });
+        
+        // Initialize
+        fetchStatus();
+        startAutoRefresh();
+        
+        // Handle cleanup on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+</body>
+</html>
