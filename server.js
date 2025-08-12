@@ -3,7 +3,7 @@ const path = require('path');
 const app = express();
 
 // Configuration
-const SECRET_PASSWORD = 'your-secret-password-here'; // Change this to your desired password
+const SECRET_PASSWORD = 'gerooqistan'; // Change this to your desired password
 const PING_TIMEOUT = 90000; // 90 seconds - systems are considered offline if no ping received
 const CLEANUP_INTERVAL = 30000; // 30 seconds - how often to clean up expired systems
 
